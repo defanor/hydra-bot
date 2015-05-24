@@ -17,13 +17,26 @@ import HydraBot.IRCProcess
 import HydraBot.NetworkUtils
 import HydraBot.News
 
+||| Slaps
+slaps : Vect 8 (String, String)
+slaps = [
+  ("rewrites", " in whitespace"),
+  ("slaps", ""),
+  ("touches", " with a hammer"),
+  ("grabs", " and runs away"),
+  ("rewrites", "'s code in PHP and removes the original"), -- borrowed from fsbot
+  ("attacks", ""),
+  ("hugs", " instead"),
+  ("rewrites", " in Perl")
+  ]
+
 ||| Slap people
 ||| @mn Bot nick, used as a protection against self-slap
 ||| @u User
 ||| @c Channel
 ||| @m Message words
 slap : (mn: String) -> (u: String) -> (c: String) ->
-     (m: List String) -> StateT (Fin 6) IO (List String)
+     (m: List String) -> StateT (Fin (length slaps)) IO (List String)
 slap mn u c ["slap", t] = do
   v <- get
   lift . putStrLn $ u ++ " wants to slap " ++ t ++ " on " ++ c
@@ -36,15 +49,6 @@ where
   incr f = case strengthen (FS f) of
     (Right fs) => fs
     (Left _) => FZ
-  slaps : Vect 6 (String, String)
-  slaps = [
-    ("rewrites", " in whitespace"),
-    ("slaps", ""),
-    ("touches", " with a hammer"),
-    ("grabs", " and runs away"),
-    ("rewrites", "'s code in PHP and removes the original"), -- borrowed from fsbot
-    ("attacks", "")
-    ]
 slap _ _ _ _ = pure []
 
 
@@ -73,8 +77,8 @@ main = do
           wid <- run . create $ writerProc s
           bid <- run . create $ pureProc wid $ basics c
           tid <- sioCommand wid FZ "," (slap n)
-          rid <- run $ create (readerProc [bid, tid] s)
-          run . create $ news wid c 300 comics
+          rid <- run . create $ readerProc [bid, tid] s
+          nid <- run . create $ news wid c 300 comics
           getLine
           sendLine s . show $ msg "QUIT" ["Time to sleep"]
           close s

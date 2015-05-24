@@ -12,6 +12,9 @@ An IRC bot.
 
 
 ## Installation
+
+Lightyear is required. Tested on Idris 0.9.18.
+
 ```
 idris -p contrib -p lightyear Main.idr -o bot
 ./bot <ipv4 address> <port> <nick> <user> <user info> [#channel1 #channel2...]

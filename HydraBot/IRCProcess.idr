@@ -45,7 +45,6 @@ where
   f' u c m = if isPrefixOf p m
              then f u c (words $ pack $ unpack m \\ unpack p)
              else pure []
-  f' _ _ _ = pure []
 
 
 ||| Writer process
