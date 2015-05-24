@@ -16,14 +16,18 @@ import HydraBot.IRCParsers
 import HydraBot.IRCProcess
 import HydraBot.NetworkUtils
 
-
-slap : Vect (S n) (String, String) -> String -> String -> List String ->
-     StateT (Fin (S n)) IO (List String)
-slap {n} slaps u c ["slap", t] = do
+||| Slap people
+||| @mn Bot nick, used as a protection against self-slap
+||| @u User
+||| @c Channel
+||| @m Message words
+slap : (mn: String) -> (u: String) -> (c: String) ->
+     (m: List String) -> StateT (Fin 6) IO (List String)
+slap mn u c ["slap", t] = do
   v <- get
   lift . putStrLn $ u ++ " wants to slap " ++ t ++ " on " ++ c
   put $ incr v
-  pure $ [action $ wrap t $ index v slaps]
+  pure $ [action $ wrap (if mn == t then u else t) $ index v slaps]
 where
   wrap : String -> (String, String) -> String
   wrap x (y, z) = y ++ " " ++ x ++ z
@@ -31,18 +35,21 @@ where
   incr f = case strengthen (FS f) of
     (Right fs) => fs
     (Left _) => FZ
+  slaps : Vect 6 (String, String)
+  slaps = [
+    ("rewrites", " in whitespace"),
+    ("slaps", ""),
+    ("touches", " with a hammer"),
+    ("grabs", " and runs away"),
+    ("rewrites", "'s code in PHP and removes the original"), -- borrowed from fsbot
+    ("attacks", "")
+    ]
 slap _ _ _ _ = pure []
 
-slaps : Vect 5 (String, String)
-slaps = [
-  ("rewrites", " in whitespace"),
-  ("slaps", ""),
-  ("touches", " with a hammer"),
-  ("grabs", " and runs away"),
-  ("rewrites", "'s code in PHP and removes the original") -- borrowed from fsbot
-  ]
-
-basics : List String -> Message -> List Message
+||| Ping and join
+||| @c A list of channels to join
+||| @m A message to process
+basics : (c: List String) -> (m: Message) -> List Message
 basics channels (Msg _ (Right 376) _) = map (msg "JOIN" . pure) channels
 basics _ (Msg _ (Left "PING") p) = msgl "PONG" p
 basics _ _ = []
@@ -63,9 +70,10 @@ main = do
           traverse (sendLine s) lines
           wid <- run . create $ writerProc s
           bid <- run . create $ pureProc wid $ basics c
-          tid <- sioCommand wid FZ "," $ slap slaps
+          tid <- sioCommand wid FZ "," (slap n)
           rid <- run $ create (readerProc [bid, tid] s)
           getLine
-          return ()
+          sendLine s . show $ msg "QUIT" ["Time to sleep"]
+          close s
     _ => putStrLn "Arguments: <ipv4 address> <port> <nick> <user> <user info> [#channel1 #channel2...]"
 

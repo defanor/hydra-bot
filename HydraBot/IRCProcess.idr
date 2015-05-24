@@ -32,8 +32,12 @@ sioChannel f (Msg (Just (User u)) (Left "PRIVMSG") [c,msg]) = map (map (cmsg c))
 sioChannel _ _ = pure []
 
 ||| Run sioChannel for prefixed commands
+||| @w Writer process
+||| @x Initial state
+||| @p Command prefix
+||| @f A function to wrap
 sioCommand : (w: ProcID Message) -> (x:s) -> (p: String) ->
-           (String -> String -> List String -> StateT s IO (List String)) ->
+           (f: String -> String -> List String -> StateT s IO (List String)) ->
            IO (ProcID Message)
 sioCommand w st p f = run . create $ sioProc w st (sioChannel f')
 where
