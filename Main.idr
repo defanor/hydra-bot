@@ -74,7 +74,7 @@ main = do
           bid <- run . create $ pureProc wid $ basics c
           tid <- sioCommand wid FZ "," (slap n)
           rid <- run $ create (readerProc [bid, tid] s)
-          run . create $ news wid c comics
+          run . create $ news wid c 300 comics
           getLine
           sendLine s . show $ msg "QUIT" ["Time to sleep"]
           close s
