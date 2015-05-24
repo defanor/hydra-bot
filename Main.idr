@@ -9,6 +9,7 @@ import System
 import Control.Monad.State
 import Control.Monad.Trans
 import System.Concurrency.Process
+import Data.Vect
 
 import HydraBot.Types
 import HydraBot.IRCParsers
@@ -16,13 +17,30 @@ import HydraBot.IRCProcess
 import HydraBot.NetworkUtils
 
 
-test : String -> String -> List String -> StateT Nat IO (List String)
-test _ _ ["inc"] = do
+slap : Vect (S n) (String, String) -> String -> String -> List String ->
+     StateT (Fin (S n)) IO (List String)
+slap {n} slaps u c ["slap", t] = do
   v <- get
-  lift . putStrLn $ "state: " ++ show v
-  put (S v)
-  pure $ [show v]
-test _ _ _ = pure []
+  lift . putStrLn $ u ++ " wants to slap " ++ t ++ " on " ++ c
+  put $ incr v
+  pure $ [action $ wrap t $ index v slaps]
+where
+  wrap : String -> (String, String) -> String
+  wrap x (y, z) = y ++ " " ++ x ++ z
+  incr : Fin (S n) -> Fin (S n)
+  incr f = case strengthen (FS f) of
+    (Right fs) => fs
+    (Left _) => FZ
+slap _ _ _ _ = pure []
+
+slaps : Vect 5 (String, String)
+slaps = [
+  ("rewrites", " in whitespace"),
+  ("slaps", ""),
+  ("touches", " with a hammer"),
+  ("grabs", " and runs away"),
+  ("rewrites", "'s code in PHP and removes the original") -- borrowed from fsbot
+  ]
 
 basics : List String -> Message -> List Message
 basics channels (Msg _ (Right 376) _) = map (msg "JOIN" . pure) channels
@@ -45,7 +63,7 @@ main = do
           traverse (sendLine s) lines
           wid <- run . create $ writerProc s
           bid <- run . create $ pureProc wid $ basics c
-          tid <- sioCommand wid Z "," test
+          tid <- sioCommand wid FZ "," $ slap slaps
           rid <- run $ create (readerProc [bid, tid] s)
           getLine
           return ()

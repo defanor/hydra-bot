@@ -39,3 +39,6 @@ cmsg c m = msg "PRIVMSG" [c, m]
 
 cmsgl : String -> String -> List Message
 cmsgl c m = pure $ cmsg c m
+
+action : String -> String
+action s = "\001ACTION " ++ s ++ "\001"
