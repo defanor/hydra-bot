@@ -7,6 +7,7 @@ An IRC bot.
 
 - Concurrency-friendly: separate reading and writing, multiple message
   processing and background processes.
+- News (comics) scraping
 - Slaps
 
 

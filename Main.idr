@@ -15,6 +15,7 @@ import HydraBot.Types
 import HydraBot.IRCParsers
 import HydraBot.IRCProcess
 import HydraBot.NetworkUtils
+import HydraBot.News
 
 ||| Slap people
 ||| @mn Bot nick, used as a protection against self-slap
@@ -46,6 +47,7 @@ where
     ]
 slap _ _ _ _ = pure []
 
+
 ||| Ping and join
 ||| @c A list of channels to join
 ||| @m A message to process
@@ -72,6 +74,7 @@ main = do
           bid <- run . create $ pureProc wid $ basics c
           tid <- sioCommand wid FZ "," (slap n)
           rid <- run $ create (readerProc [bid, tid] s)
+          run . create $ news wid c comics
           getLine
           sendLine s . show $ msg "QUIT" ["Time to sleep"]
           close s
