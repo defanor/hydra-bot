@@ -9,6 +9,7 @@ An IRC bot.
   processing and background processes.
 - News (comics) scraping
 - Slaps
+- Knowledge base (in-memory for now)
 
 
 ## Installation

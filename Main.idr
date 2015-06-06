@@ -18,17 +18,18 @@ import HydraBot.NetworkUtils
 import HydraBot.News
 
 ||| Slaps
-slaps : Vect 8 (String, String)
+slaps : List (String, String)
 slaps = [
   ("rewrites", " in whitespace"),
   ("slaps", ""),
-  ("touches", " with a hammer"),
   ("grabs", " and runs away"),
   ("rewrites", "'s code in PHP and removes the original"), -- borrowed from fsbot
   ("attacks", ""),
   ("hugs", " instead"),
-  ("rewrites", " in Perl")
+  ("beta-reduces", ""),
+  ("shows that", " is homotopy equivalent to a point")
   ]
+
 
 ||| Slap people
 ||| @mn Bot nick, used as a protection against self-slap
@@ -41,7 +42,7 @@ slap mn u c ["slap", t] = do
   v <- get
   lift . putStrLn $ u ++ " wants to slap " ++ t ++ " on " ++ c
   put $ incr v
-  pure $ [action $ wrap (if mn == t then u else t) $ index v slaps]
+  pure $ [action $ wrap (if mn == t then u else t) $ index v (fromList slaps)]
 where
   wrap : String -> (String, String) -> String
   wrap x (y, z) = y ++ " " ++ x ++ z
@@ -61,6 +62,44 @@ basics _ (Msg _ (Left "PING") p) = msgl "PONG" p
 basics _ _ = []
 
 
+||| Common things
+common : (u: String) -> (c: String) -> (m: List String) -> StateT () IO (List String)
+common u c ["anyone"] = pure . pure $ -- borrowed from fsbot
+  "Just ask your question. It's the best way to know if anyone can help."
+common _ _ _ = pure []
+
+
+||| Knowledge base
+kb : (u: String) -> (c: String) -> (m: List String) ->
+   StateT (List (String, String)) IO (List String)
+kb u c (t::"is"::d) = do
+  s <- get
+  put $ List.(::) (t, unwords d) s
+  pure . pure $ u ++ ": added a definition for " ++ t
+kb u c ["forget","about",t] = do
+  s <- get
+  case List.lookup t s of
+    Nothing => pure . pure $ u ++ ": I don't know anything about " ++ t ++ " anyway"
+    Just _ => do
+      put $ List.filter (not . (== t) . fst) s
+      pure . pure $ u ++ ": forgot successfully"
+kb u c ("forget"::"about"::t::"being"::d) = do
+  s <- get
+  if List.elem (t, unwords d) s
+    then do
+      put $ List.filter (not . (== (t, unwords d))) s
+      pure . pure $ u ++ ": forgot successfully"
+    else pure . pure $ u ++ "I don't even know about " ++ t ++ " being " ++ unwords d
+kb u c [t] = do
+  s <- get
+  case List.filter ((== t) . fst) s of
+    [] => pure []
+    [x] => pure . pure $ t ++ " is " ++ snd x
+    xs => pure $ (u ++ ": " ++ t ++ " could refer to any of these things:") ::
+      map ((++) (u ++ ": - ") . snd) xs
+kb _ _ _ = pure []
+
+
 ||| Entry point: processes args, connects, runs processes
 main : IO ()
 main = do
@@ -71,13 +110,14 @@ main = do
       case sock of
         Nothing => putStrLn "Failed to connect"
         Just s => do
-          lines <- pure (the (List String) [show $ msg "NICK" [n],
-                                            show $ msg "USER" [u, "*", "*", ui]])
-          traverse (sendLine s) lines
+          traverse {t=List} (sendLine s) [show $ msg "NICK" [n],
+                                          show $ msg "USER" [u, "*", "*", ui]]
           wid <- run . create $ writerProc s
           bid <- run . create $ pureProc wid $ basics c
           tid <- sioCommand wid FZ "," (slap n)
-          rid <- run . create $ readerProc [bid, tid] s
+          cid <- sioCommand wid () "," common
+          kid <- sioCommand wid List.Nil "," kb
+          rid <- run . create $ readerProc [bid, tid, cid, kid] s
           nid <- run . create $ news wid c 300 comics
           getLine
           sendLine s . show $ msg "QUIT" ["Time to sleep"]
